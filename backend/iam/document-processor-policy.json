@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadUploadedDocuments",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::serverless-doc-analytics-ram-2026-73921/incoming/*"
+    },
+    {
+      "Sid": "UpdateDocumentRecords",
+      "Effect": "Allow",
+      "Action": "dynamodb:UpdateItem",
+      "Resource": "arn:aws:dynamodb:ap-southeast-2:<ACCOUNT_ID>:table/DocumentAnalyticsV3"
+    }
+  ]
+}

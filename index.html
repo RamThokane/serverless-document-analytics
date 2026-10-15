@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DocAnalytics — Serverless Document Processing</title>
+  <meta name="description" content="Upload TXT documents to Amazon S3 and view analytics produced by AWS Lambda and stored in DynamoDB.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="layout">
+    <!-- ========== Sidebar ========== -->
+    <aside class="sidebar" id="sidebar" aria-label="Primary">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">DA</span>
+        <div>
+          <p class="brand-name">DocAnalytics</p>
+          <p class="brand-sub">Serverless on AWS</p>
+        </div>
+      </div>
+
+      <nav>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#/dashboard" data-route="dashboard">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>
+            Overview</a></li>
+          <li><a class="nav-link" href="#/upload" data-route="upload">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"/></svg>
+            Upload</a></li>
+          <li><a class="nav-link" href="#/documents" data-route="documents">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></svg>
+            Documents</a></li>
+          <li><a class="nav-link" href="#/setup" data-route="setup">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12h2M3 12h2M12 3v2M12 19v2M17 7l1.5-1.5M5.5 18.5 7 17M17 17l1.5 1.5M5.5 5.5 7 7"/></svg>
+            API setup</a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p class="muted small">Region</p>
+        <p class="small mono" id="sidebar-region">—</p>
+      </div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
+
+    <!-- ========== Main column ========== -->
+    <div class="main-column">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menu-btn" type="button"
+                aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <h1 class="page-title" id="page-title">Overview</h1>
+        <div class="topbar-actions">
+          <span class="api-pill" id="api-pill" role="status">Checking API…</span>
+          <button class="btn btn-secondary" id="refresh-btn" type="button" aria-label="Refresh data">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="main" tabindex="-1">
+        <!-- Shown whenever config.js has no apiBaseUrl. -->
+        <div class="notice notice-warning" id="setup-banner" hidden>
+          <strong>API not configured.</strong>
+          The dashboard is not connected to AWS yet, so no documents or analytics are shown.
+          Set <code>apiBaseUrl</code> in <code>config.js</code> once the API Gateway endpoint exists.
+          <a href="#/setup">View setup steps</a>
+        </div>
+
+        <!-- ---------- Overview ---------- -->
+        <section class="view" id="view-dashboard" data-view="dashboard" aria-labelledby="page-title">
+          <div class="stat-grid" id="stat-grid">
+            <article class="stat-card">
+              <p class="stat-label">Total documents</p>
+              <p class="stat-value" id="stat-total">—</p>
+            </article>
+            <article class="stat-card">
+              <p class="stat-label"><span class="dot dot-success" aria-hidden="true"></span>Processed</p>
+              <p class="stat-value" id="stat-processed">—</p>
+            </article>
+            <article class="stat-card">
+              <p class="stat-label"><span class="dot dot-pending" aria-hidden="true"></span>Pending</p>
+              <p class="stat-value" id="stat-pending">—</p>
+            </article>
+            <article class="stat-card">
+              <p class="stat-label"><span class="dot dot-failed" aria-hidden="true"></span>Failed</p>
+              <p class="stat-value" id="stat-failed">—</p>
+            </article>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Recent documents</h2>
+              <a class="link" href="#/documents">View all</a>
+            </div>
+            <div id="recent-container"></div>
+          </div>
+        </section>
+
+        <!-- ---------- Upload ---------- -->
+        <section class="view" id="view-upload" data-view="upload" hidden>
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Upload a document</h2>
+                <p class="muted small" id="upload-rules"></p>
+              </div>
+            </div>
+
+            <!-- The label makes the whole drop zone keyboard- and screen-reader-accessible. -->
+            <label class="dropzone" id="dropzone" for="file-input">
+              <input type="file" id="file-input" class="visually-hidden" aria-describedby="upload-rules">
+              <svg class="dropzone-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"/></svg>
+              <span class="dropzone-title">Drag and drop a file here</span>
+              <span class="muted small">or <span class="link">browse your computer</span></span>
+            </label>
+
+            <div class="selected-file" id="selected-file" hidden>
+              <div>
+                <p class="selected-name" id="selected-name"></p>
+                <p class="muted small" id="selected-meta"></p>
+              </div>
+              <button class="btn btn-ghost" id="clear-file-btn" type="button">Remove</button>
+            </div>
+
+            <p class="field-error" id="file-error" role="alert" hidden></p>
+
+            <div class="progress" id="upload-progress" hidden>
+              <div class="progress-track"><div class="progress-bar" id="upload-progress-bar"></div></div>
+              <p class="small muted" id="upload-progress-text" aria-live="polite"></p>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" id="upload-btn" type="button" disabled>Upload to S3</button>
+            </div>
+
+            <p class="muted small note">
+              Files are sent directly to Amazon S3 using a short-lived presigned URL issued by the API.
+              Uploads go under the <code>incoming/</code> prefix, which triggers the
+              <code>DocumentProcessor</code> Lambda automatically.
+            </p>
+          </div>
+
+          <div class="panel" id="upload-status-panel" hidden>
+            <div class="panel-header"><h2>Processing status</h2></div>
+            <div id="upload-status"></div>
+          </div>
+        </section>
+
+        <!-- ---------- Documents ---------- -->
+        <section class="view" id="view-documents" data-view="documents" hidden>
+          <div class="panel">
+            <form class="toolbar" id="filters" role="search">
+              <div class="field grow">
+                <label for="search-input">Search</label>
+                <input type="search" id="search-input" placeholder="Filter by file name" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="status-filter">Status</label>
+                <select id="status-filter">
+                  <option value="all">All statuses</option>
+                  <option value="processed">Processed</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="sort-select">Sort by</label>
+                <select id="sort-select">
+                  <option value="date-desc">Newest first</option>
+                  <option value="date-asc">Oldest first</option>
+                  <option value="name-asc">Name A–Z</option>
+                  <option value="name-desc">Name Z–A</option>
+                  <option value="words-desc">Most words</option>
+                </select>
+              </div>
+            </form>
+            <p class="muted small result-count" id="result-count" aria-live="polite"></p>
+            <div id="documents-container"></div>
+          </div>
+        </section>
+
+        <!-- ---------- Document details ---------- -->
+        <section class="view" id="view-details" data-view="details" hidden>
+          <a class="back-link" href="#/documents">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+            Back to documents
+          </a>
+          <div id="details-container"></div>
+        </section>
+
+        <!-- ---------- API setup ---------- -->
+        <section class="view" id="view-setup" data-view="setup" hidden>
+          <div class="panel">
+            <div class="panel-header"><h2>Connection status</h2></div>
+            <dl class="kv" id="setup-status"></dl>
+          </div>
+
+          <div class="panel prose">
+            <div class="panel-header"><h2>Endpoints this frontend expects</h2></div>
+            <p>The API Gateway HTTP API and its API Lambda still need to be created. The dashboard calls:</p>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">Purpose</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono">POST</td><td class="mono">/uploads</td><td>Return a presigned S3 PUT URL for <code>incoming/…</code></td></tr>
+                  <tr><td class="mono">GET</td><td class="mono">/documents</td><td>List document records from DynamoDB</td></tr>
+                  <tr><td class="mono">GET</td><td class="mono">/documents/{documentId}</td><td>Return one document with its analytics</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>See <code>README.md</code> for request/response shapes, CORS settings and IAM permissions.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- config.js must load first: app.js reads window.APP_CONFIG -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

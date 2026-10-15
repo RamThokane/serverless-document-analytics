@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PresignUploadsToIncomingOnly",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::serverless-doc-analytics-ram-2026-73921/incoming/*"
+    },
+    {
+      "Sid": "DocumentRecords",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:Scan"
+      ],
+      "Resource": "arn:aws:dynamodb:ap-southeast-2:<ACCOUNT_ID>:table/DocumentAnalyticsV3"
+    }
+  ]
+}
